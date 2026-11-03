@@ -4,7 +4,7 @@ Makes the Mac Play key open Spotify instead of Apple Music.
 
 ## What it does
 
-- Spotify is closed: opens Spotify and starts playing. Apple Music does not open.
+- Spotify is closed: opens Spotify with no window and starts playing. Apple Music does not open. To show the window, open Spotify as normal, for example from the Dock.
 - Spotify is open: lets the key through, so Spotify plays or pauses as normal.
 
 It listens for media key presses with a macOS event tap (a hook that sees key presses before other apps do). When Spotify is closed, it stops the Play key from reaching Apple Music.

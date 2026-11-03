@@ -1,7 +1,7 @@
 import Cocoa
 import ApplicationServices
 
-// Catches the Play key. If Spotify is closed, opens Spotify, starts playing, and stops
+// Catches the Play key. If Spotify is closed, opens Spotify with no window, starts playing, and stops
 // Apple Music from seeing the key. If Spotify is open, lets the key through to Spotify.
 
 let spotifyBundleID = "com.spotify.client"
@@ -15,12 +15,23 @@ func spotifyIsRunning() -> Bool {
 
 func openSpotifyAndPlay() {
     guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: spotifyBundleID) else { return }
-    NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration()) { _, _ in
-        // Run off the main thread so a slow Spotify cannot freeze the key tap.
+    let configuration = NSWorkspace.OpenConfiguration()
+    configuration.arguments = ["--minimized"]  // Spotify then opens with no window.
+    configuration.activates = false  // Do not take focus.
+    NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in
+        // Use a separate osascript process, off the main thread. In testing, NSAppleScript
+        // on a background thread stopped the main thread's timers.
         DispatchQueue.global().async {
-            var error: NSDictionary?
-            NSAppleScript(source: "tell application \"Spotify\" to play")?.executeAndReturnError(&error)
-            if let error = error { fputs("Could not tell Spotify to play: \(error)\n", stderr) }
+            let osascript = Process()
+            osascript.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            osascript.arguments = ["-e", "tell application \"Spotify\" to play"]
+            do {
+                try osascript.run()
+                osascript.waitUntilExit()
+                if osascript.terminationStatus != 0 { fputs("Spotify play command failed.\n", stderr) }
+            } catch {
+                fputs("Could not run osascript: \(error)\n", stderr)
+            }
         }
     }
 }
